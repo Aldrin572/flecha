@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Flecha POS Pro</title>
+    <style>
+        :root { --p: #2563eb; --s: #10b981; --d: #ef4444; --bg: #f8fafc; --txt: #1e293b; }
+        body { font-family: system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; font-size: 14px; color: var(--txt); padding-bottom: 50px; }
+        .card { background: #fff; padding: 12px; border-radius: 12px; box-shadow: 0 1px 3px #0002; margin-bottom: 12px; }
+        input { width: 100%; padding: 10px; margin: 4px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
+        button { border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #fff; width: 100%; margin-top: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .btn-p { background: var(--p); } .btn-s { background: var(--s); } .btn-d { background: var(--d); } .btn-sec { background: #64748b; }
+        .list-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .flex-1 { flex: 1; }
+        .tag { background: #dbeafe; color: #1e40af; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 4px; }
+        .price-bs { color: var(--s); font-weight: bold; font-size: 0.95em; }
+        .price-usd { font-weight: bold; font-size: 1.1em; color: var(--p); }
+        .totals { text-align: right; font-size: 22px; font-weight: 800; border-top: 2px solid #eee; padding-top: 8px; margin-bottom: 10px; }
+        #product-list { max-height: 400px; overflow-y: auto; }
+        .actions { display: flex; gap: 15px; margin-left: 10px; font-size: 18px; }
+        .backup-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        #file-input { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <label><b>Tasa del día (Bs/$):</b></label>
+    <input type="number" id="tasa" placeholder="Ej: 36.50" oninput="updAll()">
+</div>
+
+<div class="card">
+    <h3 style="margin:0">🛒 Cuenta</h3>
+    <div id="cart-list"></div>
+    <div class="totals">
+        <small style="font-size: 12px; color:#64748b">TOTAL USD:</small> $<span id="t-usd">0.00</span><br>
+        <span style="color:var(--s)"><small style="font-size: 12px">TOTAL BS:</small> <span id="t-bs">0.00</span></span>
+    </div>
+    <button class="btn-d" onclick="newSale()">🗑️ Nueva Venta / Limpiar</button>
+</div>
+
+<div class="card">
+    <input type="text" id="busc" placeholder="🔍 Buscar producto o etiqueta..." oninput="renderCat()">
+    <div id="product-list"></div>
+</div>
+
+<div class="card">
+    <h3 id="form-title" style="margin:0">➕ Gestionar Producto</h3>
+    <input type="text" id="p-nom" placeholder="Nombre del producto">
+    <input type="number" id="p-pre" placeholder="Precio USD" step="0.01">
+    <input type="text" id="p-tag" placeholder="Etiquetas (comas)">
+    <button id="btn-save" class="btn-s" onclick="saveProd()">💾 Guardar Producto</button>
+    <button id="btn-cancel" class="btn-d" style="display:none" onclick="clearForm()">❌ Cancelar</button>
+</div>
+
+<div class="card">
+    <h3 style="margin:0 0 10px 0">📂 Base de Datos (Backup)</h3>
+    <div class="backup-btns">
+        <button class="btn-sec" onclick="exportDB()">📤 Exportar</button>
+        <button class="btn-sec" onclick="document.getElementById('file-input').click()">📥 Importar</button>
+    </div>
+    <input type="file" id="file-input" accept=".json" onchange="importDB(event)">
+</div>
+
+<script>
+    let cat = JSON.parse(localStorage.getItem('catF')) || [];
+    let cart = [];
+    let editIdx = -1;
+
+    document.getElementById('tasa').value = localStorage.getItem('tasaF') || '';
+
+    function getTasa() { return parseFloat(document.getElementById('tasa').value) || 0; }
+
+    function updAll() {
+        localStorage.setItem('tasaF', document.getElementById('tasa').value);
+        renderCat();
+        renderCart();
+    }
+
+    function renderCat() {
+        const list = document.getElementById('product-list');
+        const f = document.getElementById('busc').value.toLowerCase();
+        const tasa = getTasa();
+        list.innerHTML = '';
+        
+        cat.forEach((p, i) => {
+            if (!f || p.n.toLowerCase().includes(f) || (p.t && p.t.join().toLowerCase().includes(f))) {
+                const bs = (p.pre * tasa).toFixed(2);
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <div class="flex-1" onclick="addCart(${i})">
+                        <b>${p.n}</b><br>
+                        ${p.t ? p.t.map(t => `<span class="tag">${t}</span>`).join('') : ''}
+                        <div><span class="price-usd">$${p.pre.toFixed(2)}</span> <span class="price-bs">≈ ${bs} Bs</span></div>
+                    </div>
+                    <div class="actions">
+                        <span onclick="editProd(${i})">✏️</span>
+                        <span onclick="delProd(${i})">🗑️</span>
+                    </div>`;
+                list.appendChild(div);
+            }
+        });
+    }
+
+    function saveProd() {
+        const n = document.getElementById('p-nom').value.trim();
+        const pre = parseFloat(document.getElementById('p-pre').value);
+        const t = document.getElementById('p-tag').value.split(',').map(x => x.trim()).filter(x => x);
+        if (!n || isNaN(pre)) return alert("Nombre y precio obligatorios");
+
+        if (editIdx > -1) cat[editIdx] = { n, pre, t };
+        else cat.push({ n, pre, t });
+
+        localStorage.setItem('catF', JSON.stringify(cat));
+        clearForm();
+        renderCat();
+    }
+
+    function editProd(i) {
+        editIdx = i;
+        document.getElementById('p-nom').value = cat[i].n;
+        document.getElementById('p-pre').value = cat[i].pre;
+        document.getElementById('p-tag').value = cat[i].t ? cat[i].t.join(',') : '';
+        document.getElementById('form-title').innerText = "✏️ Editando Producto";
+        document.getElementById('btn-save').innerText = "Actualizar Producto";
+        document.getElementById('btn-cancel').style.display = "flex";
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function delProd(i) { if (confirm("¿Eliminar del inventario?")) { cat.splice(i, 1); localStorage.setItem('catF', JSON.stringify(cat)); renderCat(); } }
+
+    function clearForm() {
+        editIdx = -1;
+        document.getElementById('p-nom').value = ''; document.getElementById('p-pre').value = ''; document.getElementById('p-tag').value = '';
+        document.getElementById('form-title').innerText = "➕ Gestionar Producto";
+        document.getElementById('btn-save').innerText = "💾 Guardar Producto";
+        document.getElementById('btn-cancel').style.display = "none";
+    }
+
+    function addCart(i) {
+        const p = cat[i];
+        const ex = cart.find(x => x.n === p.n);
+        ex ? ex.c++ : cart.push({ ...p, c: 1 });
+        renderCart();
+    }
+
+    function renderCart() {
+        const l = document.getElementById('cart-list');
+        const tasa = getTasa();
+        l.innerHTML = '';
+        let uTotal = 0;
+        cart.forEach((p, i) => {
+            const sUsd = p.pre * p.c;
+            const sBs = (sUsd * tasa).toFixed(2);
+            uTotal += sUsd;
+            const d = document.createElement('div');
+            d.className = 'list-item';
+            d.innerHTML = `
+                <div class="flex-1"><b>${p.c}x</b> ${p.n}</div> 
+                <div style="text-align:right">
+                    <b>$${sUsd.toFixed(2)}</b><br>
+                    <small class="price-bs">${sBs} Bs</small>
+                </div> 
+                <span style="margin-left:15px; color:var(--d); font-weight:bold; font-size:20px" onclick="rem(${i})">×</span>`;
+            l.appendChild(d);
+        });
+        document.getElementById('t-usd').innerText = uTotal.toFixed(2);
+        document.getElementById('t-bs').innerText = (uTotal * tasa).toLocaleString('es-VE', {minimumFractionDigits: 2});
+    }
+
+    function rem(i) { cart[i].c > 1 ? cart[i].c-- : cart.splice(i, 1); renderCart(); }
+    function newSale() { cart = []; renderCart(); }
+
+    // --- FUNCIONES DE BACKUP ---
+    function exportDB() {
+        if(cat.length === 0) return alert("El inventario está vacío.");
+        const dataStr = JSON.stringify(cat, null, 2);
+        const blob = new Blob([dataStr], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = "inventario_flecha.json";
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function importDB(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const imported = JSON.parse(e.target.result);
+                if (Array.isArray(imported)) {
+                    if(confirm("Se reemplazarán tus productos actuales. ¿Continuar?")) {
+                        cat = imported;
+                        localStorage.setItem('catF', JSON.stringify(cat));
+                        renderCat();
+                        alert("¡Catálogo importado con éxito!");
+                    }
+                } else { alert("Formato de archivo inválido."); }
+            } catch (err) { alert("Error al leer el archivo."); }
+        };
+        reader.readAsText(file);
+        event.target.value = ''; // Reset input
+    }
+
+    renderCat();
+    renderCart();
+</script>
+</body>
+</html>
