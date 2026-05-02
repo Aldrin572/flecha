@@ -4,211 +4,294 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Flecha POS Pro</title>
+    <!-- Librerías Externas -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/big.js/6.2.1/big.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
-        :root { --p: #2563eb; --s: #10b981; --d: #ef4444; --bg: #f8fafc; --txt: #1e293b; }
-        body { font-family: system-ui, sans-serif; background: var(--bg); margin: 0; padding: 10px; font-size: 14px; color: var(--txt); padding-bottom: 50px; }
-        .card { background: #fff; padding: 12px; border-radius: 12px; box-shadow: 0 1px 3px #0002; margin-bottom: 12px; }
-        input { width: 100%; padding: 10px; margin: 4px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 16px; }
-        button { border: none; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; color: #fff; width: 100%; margin-top: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
-        .btn-p { background: var(--p); } .btn-s { background: var(--s); } .btn-d { background: var(--d); } .btn-sec { background: #64748b; }
-        .list-item { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .flex-1 { flex: 1; }
-        .tag { background: #dbeafe; color: #1e40af; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-right: 4px; }
-        .price-bs { color: var(--s); font-weight: bold; font-size: 0.95em; }
-        .price-usd { font-weight: bold; font-size: 1.1em; color: var(--p); }
-        .totals { text-align: right; font-size: 22px; font-weight: 800; border-top: 2px solid #eee; padding-top: 8px; margin-bottom: 10px; }
-        #product-list { max-height: 400px; overflow-y: auto; }
-        .actions { display: flex; gap: 15px; margin-left: 10px; font-size: 18px; }
-        .backup-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        #file-input { display: none; }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .custom-shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
+        #product-list { max-height: 50vh; }
     </style>
 </head>
-<body>
+<body class="bg-slate-50 text-slate-800 pb-20">
 
-<div class="card">
-    <label><b>Tasa del día (Bs/$):</b></label>
-    <input type="number" id="tasa" placeholder="Ej: 36.50" oninput="updAll()">
-</div>
+    <!-- Header / Tasa -->
+    <header class="bg-white border-b sticky top-0 z-50 px-4 py-3 custom-shadow">
+        <div class="flex items-center justify-between gap-4 max-w-2xl mx-auto">
+            <div class="flex items-center gap-2 text-blue-600">
+                <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+                <span class="font-bold text-lg tracking-tight">FLECHA</span>
+            </div>
+            <div class="flex-1 max-w-[180px]">
+                <div class="relative">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">Bs/$</span>
+                    <input type="number" id="tasa" oninput="updAll()" placeholder="0.00" 
+                        class="w-full pl-12 pr-3 py-2 bg-slate-100 border-none rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+        </div>
+    </header>
 
-<div class="card">
-    <h3 style="margin:0">🛒 Cuenta</h3>
-    <div id="cart-list"></div>
-    <div class="totals">
-        <small style="font-size: 12px; color:#64748b">TOTAL USD:</small> $<span id="t-usd">0.00</span><br>
-        <span style="color:var(--s)"><small style="font-size: 12px">TOTAL BS:</small> <span id="t-bs">0.00</span></span>
-    </div>
-    <button class="btn-d" onclick="newSale()">🗑️ Nueva Venta / Limpiar</button>
-</div>
+    <main class="max-w-2xl mx-auto p-4 space-y-4">
 
-<div class="card">
-    <input type="text" id="busc" placeholder="🔍 Buscar producto o etiqueta..." oninput="renderCat()">
-    <div id="product-list"></div>
-</div>
-
-<div class="card">
-    <h3 id="form-title" style="margin:0">➕ Gestionar Producto</h3>
-    <input type="text" id="p-nom" placeholder="Nombre del producto">
-    <input type="number" id="p-pre" placeholder="Precio USD" step="0.01">
-    <input type="text" id="p-tag" placeholder="Etiquetas (comas)">
-    <button id="btn-save" class="btn-s" onclick="saveProd()">💾 Guardar Producto</button>
-    <button id="btn-cancel" class="btn-d" style="display:none" onclick="clearForm()">❌ Cancelar</button>
-</div>
-
-<div class="card">
-    <h3 style="margin:0 0 10px 0">📂 Base de Datos (Backup)</h3>
-    <div class="backup-btns">
-        <button class="btn-sec" onclick="exportDB()">📤 Exportar</button>
-        <button class="btn-sec" onclick="document.getElementById('file-input').click()">📥 Importar</button>
-    </div>
-    <input type="file" id="file-input" accept=".json" onchange="importDB(event)">
-</div>
-
-<script>
-    let cat = JSON.parse(localStorage.getItem('catF')) || [];
-    let cart = [];
-    let editIdx = -1;
-
-    document.getElementById('tasa').value = localStorage.getItem('tasaF') || '';
-
-    function getTasa() { return parseFloat(document.getElementById('tasa').value) || 0; }
-
-    function updAll() {
-        localStorage.setItem('tasaF', document.getElementById('tasa').value);
-        renderCat();
-        renderCart();
-    }
-
-    function renderCat() {
-        const list = document.getElementById('product-list');
-        const f = document.getElementById('busc').value.toLowerCase();
-        const tasa = getTasa();
-        list.innerHTML = '';
-        
-        cat.forEach((p, i) => {
-            if (!f || p.n.toLowerCase().includes(f) || (p.t && p.t.join().toLowerCase().includes(f))) {
-                const bs = (p.pre * tasa).toFixed(2);
-                const div = document.createElement('div');
-                div.className = 'list-item';
-                div.innerHTML = `
-                    <div class="flex-1" onclick="addCart(${i})">
-                        <b>${p.n}</b><br>
-                        ${p.t ? p.t.map(t => `<span class="tag">${t}</span>`).join('') : ''}
-                        <div><span class="price-usd">$${p.pre.toFixed(2)}</span> <span class="price-bs">≈ ${bs} Bs</span></div>
+        <!-- Carrito / Cuenta -->
+        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden custom-shadow">
+            <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                    <i data-lucide="shopping-cart" class="w-4 h-4"></i> Cuenta Actual
+                </h2>
+                <button onclick="newSale()" class="text-red-500 text-xs font-bold flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded">
+                    <i data-lucide="trash-2" class="w-3 h-3"></i> LIMPIAR
+                </button>
+            </div>
+            <div id="cart-list" class="p-4 space-y-3 min-h-[60px]">
+                <!-- Items del carrito -->
+            </div>
+            <div class="bg-blue-600 p-4 text-white">
+                <div class="flex justify-between items-end">
+                    <span class="text-blue-100 text-sm">Total a cobrar:</span>
+                    <div class="text-right">
+                        <div class="text-3xl font-bold leading-none">$<span id="t-usd">0.00</span></div>
+                        <div class="text-blue-100 font-medium mt-1 uppercase text-xs tracking-widest">
+                            Bs <span id="t-bs" class="text-lg text-white">0,00</span>
+                        </div>
                     </div>
-                    <div class="actions">
-                        <span onclick="editProd(${i})">✏️</span>
-                        <span onclick="delProd(${i})">🗑️</span>
-                    </div>`;
-                list.appendChild(div);
+                </div>
+            </div>
+        </section>
+
+        <!-- Buscador y Catálogo -->
+        <section class="space-y-3">
+            <div class="relative">
+                <i data-lucide="search" class="absolute left-3 top-3 w-5 h-5 text-slate-400"></i>
+                <input type="text" id="busc" oninput="renderCat()" placeholder="Buscar producto o etiqueta..." 
+                    class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 custom-shadow">
+            </div>
+            
+            <div id="product-list" class="space-y-2 overflow-y-auto pr-1">
+                <!-- Lista de productos -->
+            </div>
+        </section>
+
+        <!-- Formulario Añadir/Editar -->
+        <section class="bg-white p-4 rounded-xl border border-slate-200 custom-shadow space-y-3">
+            <h3 id="form-title" class="font-bold text-slate-700 flex items-center gap-2 uppercase text-xs tracking-widest">
+                <i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto
+            </h3>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="text" id="p-nom" placeholder="Nombre" class="col-span-2 p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500">
+                <input type="number" id="p-pre" placeholder="Precio $" class="p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500">
+                <input type="text" id="p-tag" placeholder="Tags (comas)" class="p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500">
+            </div>
+            <div class="flex gap-2">
+                <button id="btn-save" onclick="saveProd()" class="flex-1 bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold text-sm shadow-lg shadow-blue-200 transition-all">
+                    GUARDAR PRODUCTO
+                </button>
+                <button id="btn-cancel" onclick="clearForm()" class="hidden bg-slate-200 text-slate-600 px-4 rounded-lg font-bold">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+        </section>
+
+        <!-- Backup -->
+        <section class="flex gap-3">
+            <button onclick="exportDB()" class="flex-1 bg-white border border-slate-200 text-slate-600 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 uppercase tracking-tighter">
+                <i data-lucide="download" class="w-4 h-4"></i> Exportar JSON
+            </button>
+            <button onclick="document.getElementById('file-input').click()" class="flex-1 bg-white border border-slate-200 text-slate-600 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 uppercase tracking-tighter">
+                <i data-lucide="upload" class="w-4 h-4"></i> Importar JSON
+            </button>
+            <input type="file" id="file-input" accept=".json" class="hidden" onchange="importDB(event)">
+        </section>
+
+    </main>
+
+    <script>
+        let cat = JSON.parse(localStorage.getItem('catF')) || [];
+        let cart = [];
+        let editIdx = -1;
+
+        // Inicializar iconos y tasa
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('tasa').value = localStorage.getItem('tasaF') || '';
+            lucide.createIcons();
+            renderCat();
+        });
+
+        function getTasa() { 
+            try { return new Big(document.getElementById('tasa').value || 0); } 
+            catch { return new Big(0); }
+        }
+
+        function updAll() {
+            localStorage.setItem('tasaF', document.getElementById('tasa').value);
+            renderCat();
+            renderCart();
+        }
+
+        function renderCat() {
+            const list = document.getElementById('product-list');
+            const f = document.getElementById('busc').value.toLowerCase();
+            const tasa = getTasa();
+            list.innerHTML = '';
+            
+            cat.forEach((p, i) => {
+                const tagsStr = p.t ? p.t.join(' ') : '';
+                if (!f || p.n.toLowerCase().includes(f) || tagsStr.toLowerCase().includes(f)) {
+                    const priceBig = new Big(p.pre);
+                    const bsPrice = tasa.gt(0) ? priceBig.times(tasa).toFixed(2) : "0.00";
+                    
+                    const div = document.createElement('div');
+                    div.className = "bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer";
+                    div.innerHTML = `
+                        <div class="flex-1" onclick="addCart(${i})">
+                            <div class="font-bold text-slate-800">${p.n}</div>
+                            <div class="flex flex-wrap gap-1 mt-1">
+                                ${p.t ? p.t.map(t => `<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase font-bold">${t}</span>`).join('') : ''}
+                            </div>
+                        </div>
+                        <div class="text-right flex items-center gap-4">
+                            <div onclick="addCart(${i})">
+                                <div class="text-lg font-bold text-blue-600">$${priceBig.toFixed(2)}</div>
+                                <div class="text-xs font-bold text-emerald-500">${bsPrice} Bs</div>
+                            </div>
+                            <div class="flex flex-col gap-2 pl-4 border-l">
+                                <button onclick="event.stopPropagation(); editProd(${i})" class="p-1 text-slate-400 hover:text-blue-500"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="event.stopPropagation(); delProd(${i})" class="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+                    `;
+                    list.appendChild(div);
+                }
+            });
+            lucide.createIcons();
+        }
+
+        function saveProd() {
+            const n = document.getElementById('p-nom').value.trim();
+            const preVal = document.getElementById('p-pre').value;
+            const t = document.getElementById('p-tag').value.split(',').map(x => x.trim()).filter(x => x);
+            
+            if (!n || !preVal) return alert("Complete nombre y precio");
+            const pre = new Big(preVal).toNumber();
+
+            if (editIdx > -1) cat[editIdx] = { n, pre, t };
+            else cat.push({ n, pre, t });
+
+            localStorage.setItem('catF', JSON.stringify(cat));
+            clearForm();
+            renderCat();
+        }
+
+        function editProd(i) {
+            editIdx = i;
+            document.getElementById('p-nom').value = cat[i].n;
+            document.getElementById('p-pre').value = cat[i].pre;
+            document.getElementById('p-tag').value = cat[i].t ? cat[i].t.join(',') : '';
+            document.getElementById('form-title').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-orange-500"></i> Editando Producto`;
+            document.getElementById('btn-save').innerText = "ACTUALIZAR CAMBIOS";
+            document.getElementById('btn-cancel').classList.remove('hidden');
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            lucide.createIcons();
+        }
+
+        function clearForm() {
+            editIdx = -1;
+            document.getElementById('p-nom').value = '';
+            document.getElementById('p-pre').value = '';
+            document.getElementById('p-tag').value = '';
+            document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto`;
+            document.getElementById('btn-save').innerText = "GUARDAR PRODUCTO";
+            document.getElementById('btn-cancel').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function addCart(i) {
+            const p = cat[i];
+            const ex = cart.find(x => x.n === p.n);
+            if (ex) ex.c = new Big(ex.c).plus(1).toNumber();
+            else cart.push({ ...p, c: 1 });
+            renderCart();
+        }
+
+        function renderCart() {
+            const l = document.getElementById('cart-list');
+            const tasa = getTasa();
+            l.innerHTML = '';
+            let uTotal = new Big(0);
+
+            cart.forEach((p, i) => {
+                const subUsd = new Big(p.pre).times(p.c);
+                const subBs = tasa.gt(0) ? subUsd.times(tasa) : new Big(0);
+                uTotal = uTotal.plus(subUsd);
+
+                const d = document.createElement('div');
+                d.className = "flex items-center justify-between text-sm py-1 border-b border-slate-50 last:border-0";
+                d.innerHTML = `
+                    <div class="flex-1">
+                        <span class="font-bold text-blue-600 bg-blue-50 px-1.5 rounded mr-2">${p.c}x</span>
+                        <span class="text-slate-700 font-medium">${p.n}</span>
+                    </div>
+                    <div class="text-right mr-4">
+                        <div class="font-bold text-slate-800">$${subUsd.toFixed(2)}</div>
+                        <div class="text-[10px] font-bold text-slate-400">${subBs.toFixed(2)} Bs</div>
+                    </div>
+                    <button onclick="rem(${i})" class="text-slate-300 hover:text-red-500"><i data-lucide="x-circle" class="w-5 h-5"></i></button>
+                `;
+                l.appendChild(d);
+            });
+
+            document.getElementById('t-usd').innerText = uTotal.toFixed(2);
+            document.getElementById('t-bs').innerText = tasa.gt(0) 
+                ? uTotal.times(tasa).toNumber().toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                : "0,00";
+            lucide.createIcons();
+        }
+
+        function rem(i) {
+            if (cart[i].c > 1) cart[i].c = new Big(cart[i].c).minus(1).toNumber();
+            else cart.splice(i, 1);
+            renderCart();
+        }
+
+        function delProd(i) {
+            if (confirm("¿Eliminar producto definitivamente?")) {
+                cat.splice(i, 1);
+                localStorage.setItem('catF', JSON.stringify(cat));
+                renderCat();
             }
-        });
-    }
+        }
 
-    function saveProd() {
-        const n = document.getElementById('p-nom').value.trim();
-        const pre = parseFloat(document.getElementById('p-pre').value);
-        const t = document.getElementById('p-tag').value.split(',').map(x => x.trim()).filter(x => x);
-        if (!n || isNaN(pre)) return alert("Nombre y precio obligatorios");
+        function newSale() { cart = []; renderCart(); }
 
-        if (editIdx > -1) cat[editIdx] = { n, pre, t };
-        else cat.push({ n, pre, t });
+        function exportDB() {
+            const dataStr = JSON.stringify(cat, null, 2);
+            const blob = new Blob([dataStr], { type: "application/json" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `inventario_flecha_${new Date().toISOString().slice(0,10)}.json`;
+            a.click();
+        }
 
-        localStorage.setItem('catF', JSON.stringify(cat));
-        clearForm();
-        renderCat();
-    }
-
-    function editProd(i) {
-        editIdx = i;
-        document.getElementById('p-nom').value = cat[i].n;
-        document.getElementById('p-pre').value = cat[i].pre;
-        document.getElementById('p-tag').value = cat[i].t ? cat[i].t.join(',') : '';
-        document.getElementById('form-title').innerText = "✏️ Editando Producto";
-        document.getElementById('btn-save').innerText = "Actualizar Producto";
-        document.getElementById('btn-cancel').style.display = "flex";
-        window.scrollTo(0, document.body.scrollHeight);
-    }
-
-    function delProd(i) { if (confirm("¿Eliminar del inventario?")) { cat.splice(i, 1); localStorage.setItem('catF', JSON.stringify(cat)); renderCat(); } }
-
-    function clearForm() {
-        editIdx = -1;
-        document.getElementById('p-nom').value = ''; document.getElementById('p-pre').value = ''; document.getElementById('p-tag').value = '';
-        document.getElementById('form-title').innerText = "➕ Gestionar Producto";
-        document.getElementById('btn-save').innerText = "💾 Guardar Producto";
-        document.getElementById('btn-cancel').style.display = "none";
-    }
-
-    function addCart(i) {
-        const p = cat[i];
-        const ex = cart.find(x => x.n === p.n);
-        ex ? ex.c++ : cart.push({ ...p, c: 1 });
-        renderCart();
-    }
-
-    function renderCart() {
-        const l = document.getElementById('cart-list');
-        const tasa = getTasa();
-        l.innerHTML = '';
-        let uTotal = 0;
-        cart.forEach((p, i) => {
-            const sUsd = p.pre * p.c;
-            const sBs = (sUsd * tasa).toFixed(2);
-            uTotal += sUsd;
-            const d = document.createElement('div');
-            d.className = 'list-item';
-            d.innerHTML = `
-                <div class="flex-1"><b>${p.c}x</b> ${p.n}</div> 
-                <div style="text-align:right">
-                    <b>$${sUsd.toFixed(2)}</b><br>
-                    <small class="price-bs">${sBs} Bs</small>
-                </div> 
-                <span style="margin-left:15px; color:var(--d); font-weight:bold; font-size:20px" onclick="rem(${i})">×</span>`;
-            l.appendChild(d);
-        });
-        document.getElementById('t-usd').innerText = uTotal.toFixed(2);
-        document.getElementById('t-bs').innerText = (uTotal * tasa).toLocaleString('es-VE', {minimumFractionDigits: 2});
-    }
-
-    function rem(i) { cart[i].c > 1 ? cart[i].c-- : cart.splice(i, 1); renderCart(); }
-    function newSale() { cart = []; renderCart(); }
-
-    // --- FUNCIONES DE BACKUP ---
-    function exportDB() {
-        if(cat.length === 0) return alert("El inventario está vacío.");
-        const dataStr = JSON.stringify(cat, null, 2);
-        const blob = new Blob([dataStr], { type: "application/json" });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = "inventario_flecha.json";
-        a.click();
-        URL.revokeObjectURL(url);
-    }
-
-    function importDB(event) {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const imported = JSON.parse(e.target.result);
-                if (Array.isArray(imported)) {
-                    if(confirm("Se reemplazarán tus productos actuales. ¿Continuar?")) {
+        function importDB(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const imported = JSON.parse(ev.target.result);
+                    if (Array.isArray(imported) && confirm("¿Reemplazar inventario actual?")) {
                         cat = imported;
                         localStorage.setItem('catF', JSON.stringify(cat));
                         renderCat();
-                        alert("¡Catálogo importado con éxito!");
                     }
-                } else { alert("Formato de archivo inválido."); }
-            } catch (err) { alert("Error al leer el archivo."); }
-        };
-        reader.readAsText(file);
-        event.target.value = ''; // Reset input
-    }
-
-    renderCat();
-    renderCart();
-</script>
+                } catch { alert("Archivo inválido"); }
+            };
+            reader.readAsText(file);
+        }
+    </script>
 </body>
 </html>
