@@ -22,17 +22,15 @@
         .hide-scroll::-webkit-scrollbar { display: none; }
         .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Contenedor de deslizamiento frenado */
+        /* Contenedor de deslizamiento (sin scroll-behavior para control total con JS) */
         #swipe-wrap {
             display: flex;
             overflow-x: auto;
             scroll-snap-type: x mandatory;
-            scroll-behavior: smooth;
         }
         .swipe-page {
             min-width: 100vw;
             scroll-snap-align: start;
-            /* Esta es la regla mágica que evita pasar de largo al deslizar rápido */
             scroll-snap-stop: always; 
             height: 100%;
             overflow-y: auto;
@@ -42,7 +40,7 @@
 </head>
 <body class="bg-slate-50 text-slate-800 h-screen flex flex-col">
 
-    <!-- HEADER SUPERIOR FLOTANTE (Solo Tasa y Logo) -->
+    <!-- HEADER SUPERIOR -->
     <header class="bg-white z-50 border-b flex-shrink-0">
         <div class="flex items-center justify-between px-4 py-3">
             <div class="flex items-center gap-2 text-blue-600">
@@ -71,10 +69,8 @@
                 </button>
             </div>
             
-            <!-- Lista del Carrito -->
             <div id="cart-list" class="flex-1 overflow-y-auto space-y-2 pb-4 hide-scroll"></div>
 
-            <!-- Total Fijo Abajo (Ya no tapa cosas, se acopla al final del contenedor) -->
             <div class="flex-shrink-0 bg-blue-600 rounded-xl p-4 text-white shadow-lg shadow-blue-200 border border-blue-500 mt-2">
                 <div class="flex justify-between items-end">
                     <span class="text-blue-100 text-sm font-medium">A cobrar:</span>
@@ -90,26 +86,21 @@
 
         <!-- PANEL 1: CATÁLOGO -->
         <section class="swipe-page p-4 flex flex-col gap-3">
-            <!-- Buscador -->
             <div class="relative flex-shrink-0">
                 <i data-lucide="search" class="absolute left-3 top-3.5 w-5 h-5 text-slate-400"></i>
                 <input type="text" id="busc" oninput="renderCat()" placeholder="Buscar producto..." 
                     class="w-full pl-10 pr-10 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 shadow-sm transition-all">
-                <button onclick="document.getElementById('busc').value=''; renderCat()" class="absolute right-3 top-3.5 text-slate-400 active:scale-90">
+                <button onclick="document.getElementById('busc').value=''; renderCat(); document.getElementById('busc').focus()" class="absolute right-3 top-3.5 text-slate-400 active:scale-90">
                     <i data-lucide="x-circle" class="w-5 h-5"></i>
                 </button>
             </div>
 
-            <!-- Filtros rápidos -->
             <div id="quick-filters" class="flex gap-2 overflow-x-auto hide-scroll pb-1 flex-shrink-0"></div>
-            
-            <!-- Lista de Productos -->
             <div id="product-list" class="flex-1 overflow-y-auto space-y-2 pb-2 hide-scroll"></div>
         </section>
 
-        <!-- PANEL 2: GESTIÓN Y BACKUP -->
+        <!-- PANEL 2: GESTIÓN -->
         <section class="swipe-page p-4 space-y-4">
-            <!-- Formulario -->
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-3">
                 <h3 id="form-title" class="font-bold text-slate-700 flex items-center gap-2 uppercase text-xs tracking-widest">
                     <i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto
@@ -123,13 +114,12 @@
                     <button id="btn-save" onclick="saveProd()" class="flex-1 bg-blue-600 active:bg-blue-700 py-3 rounded-lg font-bold text-sm text-white shadow transition-transform active:scale-95 flex items-center justify-center gap-2">
                         <i data-lucide="save" class="w-4 h-4"></i> GUARDAR
                     </button>
-                    <button id="btn-cancel" onclick="clearForm()" class="hidden bg-slate-200 text-slate-600 px-4 rounded-lg font-bold active:bg-slate-300">
+                    <button id="btn-cancel" onclick="clearForm()" class="hidden bg-slate-200 text-slate-600 px-4 rounded-lg font-bold active:bg-slate-300 flex items-center justify-center">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
             </div>
 
-            <!-- Backup -->
             <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <h3 class="font-bold text-slate-700 uppercase text-xs tracking-widest mb-3 flex items-center gap-2">
                     <i data-lucide="database" class="w-4 h-4 text-slate-400"></i> Base de Datos
@@ -148,12 +138,11 @@
 
     </main>
 
-    <!-- NAVEGACIÓN INFERIOR (Bottom Navigation Bar) -->
+    <!-- NAVEGACIÓN INFERIOR -->
     <nav class="bg-white border-t custom-shadow flex-shrink-0 flex items-center justify-around pb-safe pt-1">
         <button onclick="navTo(0)" id="tab-0" class="flex flex-col items-center justify-center w-full py-2 text-slate-400 transition-colors relative">
             <i data-lucide="shopping-cart" class="w-6 h-6 mb-1"></i>
             <span class="text-[10px] font-bold uppercase tracking-wider">Cuenta</span>
-            <!-- Puntito rojo del carrito -->
             <span id="cart-badge" class="hidden absolute top-1 right-[30%] bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full items-center justify-center border-2 border-white">0</span>
         </button>
         
@@ -174,7 +163,9 @@
         let cat = JSON.parse(localStorage.getItem('catF')) || [];
         let cart =[];
         let editIdx = -1;
+        let currentTab = 1;
         const wrap = document.getElementById('swipe-wrap');
+        let scrollRafId;
 
         function vib() { if (navigator.vibrate) navigator.vibrate(30); }
 
@@ -183,12 +174,28 @@
             lucide.createIcons();
             renderCat();
             updateFilters();
-            setTimeout(() => navTo(1), 100); // Inicia en catálogo
+            
+            // Inicia en catálogo y activa el teclado de forma sutil
+            setTimeout(() => {
+                navTo(1);
+            }, 100);
         });
 
-        // Detectar en qué pestaña estamos y pintar los iconos de azul
+        // Actualizar UI al deslizar con el dedo
         wrap.addEventListener('scroll', () => {
             const index = Math.round(wrap.scrollLeft / window.innerWidth);
+            if (currentTab !== index) {
+                currentTab = index;
+                updateTabUI(index);
+                
+                // Si deslizamos fuera del catálogo, ocultamos el teclado
+                if (index !== 1) {
+                    document.activeElement.blur();
+                }
+            }
+        });
+
+        function updateTabUI(index) {
             [0,1,2].forEach(i => {
                 const tab = document.getElementById(`tab-${i}`);
                 if (i === index) {
@@ -199,11 +206,46 @@
                     tab.classList.add('text-slate-400');
                 }
             });
-        });
+        }
 
+        // Sistema de animación ultra rápido (180ms)
         function navTo(index) {
             vib();
-            wrap.scrollTo({ left: window.innerWidth * index, behavior: 'smooth' });
+            const target = window.innerWidth * index;
+            
+            cancelAnimationFrame(scrollRafId);
+            wrap.style.scrollSnapType = 'none'; // Quitar el freno para animar limpio
+            
+            const start = wrap.scrollLeft;
+            const change = target - start;
+            const startTime = performance.now();
+            const duration = 180; // 180 milisegundos de velocidad FLECHA
+
+            function animate(time) {
+                const elapsed = time - startTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Curva de aceleración (easeOutCubic)
+                const ease = 1 - Math.pow(1 - progress, 3);
+                wrap.scrollLeft = start + change * ease;
+
+                if (progress < 1) {
+                    scrollRafId = requestAnimationFrame(animate);
+                } else {
+                    wrap.style.scrollSnapType = 'x mandatory'; // Restaurar el freno
+                    
+                    // Lógica del Teclado Auto-Focus
+                    if (index === 1) {
+                        const searchInput = document.getElementById('busc');
+                        // PreventScroll evita que el navegador de un "brinco" brusco al abrir el teclado
+                        searchInput.focus({ preventScroll: true }); 
+                    } else {
+                        // Si cambiamos a cuenta o gestión, soltar el foco para esconder el teclado
+                        document.activeElement.blur(); 
+                    }
+                }
+            }
+            scrollRafId = requestAnimationFrame(animate);
         }
 
         function getTasa() { 
@@ -230,8 +272,10 @@
 
         function setFilter(tag) {
             vib();
-            document.getElementById('busc').value = tag;
+            const searchInput = document.getElementById('busc');
+            searchInput.value = tag;
             renderCat();
+            searchInput.focus({ preventScroll: true }); // Mantener el teclado listo
         }
 
         function renderCat() {
@@ -278,10 +322,12 @@
             else cart.push({ ...p, c: 1 });
             renderCart();
             
-            // Micro-flash visual para confirmar que se agregó sin mirar el carrito
             const navIcon = document.querySelector('#tab-0 i');
             navIcon.classList.add('text-emerald-500', 'scale-125');
             setTimeout(() => navIcon.classList.remove('text-emerald-500', 'scale-125'), 200);
+            
+            // Refocus para no perder la agilidad de búsqueda
+            document.getElementById('busc').focus({ preventScroll: true });
         }
 
         function renderCart() {
@@ -360,8 +406,13 @@
             document.getElementById('p-nom').value = cat[i].n;
             document.getElementById('p-pre').value = cat[i].pre;
             document.getElementById('p-tag').value = cat[i].t ? cat[i].t.join(',') : '';
-            document.getElementById('form-title').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-orange-500"></i> Editar Producto`;
-            document.getElementById('btn-save').innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i> ACTUALIZAR`;
+            
+            const formTitle = document.getElementById('form-title');
+            formTitle.innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-orange-500"></i> Editar Producto`;
+            
+            const btnSave = document.getElementById('btn-save');
+            btnSave.innerHTML = `<i data-lucide="refresh-cw" class="w-4 h-4"></i> ACTUALIZAR`;
+            
             document.getElementById('btn-cancel').classList.remove('hidden');
             navTo(2);
             lucide.createIcons();
@@ -370,8 +421,13 @@
         function clearForm() {
             editIdx = -1;
             document.getElementById('p-nom').value = ''; document.getElementById('p-pre').value = ''; document.getElementById('p-tag').value = '';
-            document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto`;
-            document.getElementById('btn-save').innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> GUARDAR`;
+            
+            const formTitle = document.getElementById('form-title');
+            formTitle.innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto`;
+            
+            const btnSave = document.getElementById('btn-save');
+            btnSave.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> GUARDAR`;
+            
             document.getElementById('btn-cancel').classList.add('hidden');
             lucide.createIcons();
         }
