@@ -7,7 +7,7 @@
     
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#ffffff">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/1554/1554401.png">
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -16,44 +16,76 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .custom-shadow { box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06); }
-        #product-list { max-height: 50vh; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; overflow: hidden; }
+        
+        /* Sombras y utilidades */
+        .custom-shadow { box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06); }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Contenedor de deslizamiento estilo WhatsApp */
+        #swipe-wrap {
+            display: flex;
+            overflow-x: auto;
+            scroll-snap-type: x mandatory;
+            height: 100%;
+            scroll-behavior: smooth;
+        }
+        .swipe-page {
+            min-width: 100vw;
+            scroll-snap-align: start;
+            height: 100%;
+            overflow-y: auto;
+            padding-bottom: 80px; /* Espacio para respirar abajo */
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 pb-20">
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col">
 
-    <header class="bg-white border-b sticky top-0 z-50 px-4 py-3 custom-shadow">
-        <div class="flex items-center justify-between gap-4 max-w-2xl mx-auto">
+    <!-- HEADER FLOTANTE -->
+    <header class="bg-white z-50 custom-shadow flex-shrink-0">
+        <!-- Tasa del día -->
+        <div class="flex items-center justify-between px-4 py-3 border-b">
             <div class="flex items-center gap-2 text-blue-600">
                 <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
                 <span class="font-bold text-lg tracking-tight">FLECHA</span>
             </div>
-            <div class="flex-1 max-w-[180px]">
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm">Bs/$</span>
-                    <input type="number" id="tasa" oninput="updAll()" placeholder="0.00" 
-                        class="w-full pl-12 pr-3 py-2 bg-slate-100 border-none rounded-lg text-sm font-semibold focus:ring-2 focus:ring-blue-500 outline-none text-slate-700">
-                </div>
+            <div class="w-40 relative">
+                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-sm font-bold">Bs/</span>
+                <input type="number" id="tasa" inputmode="decimal" oninput="updAll()" placeholder="0.00" 
+                    class="w-full pl-10 pr-3 py-2 bg-slate-100 rounded-lg text-sm font-bold text-blue-600 focus:ring-2 focus:ring-blue-500 outline-none">
             </div>
         </div>
+        
+        <!-- Pestañas de Navegación -->
+        <nav class="flex text-sm font-bold text-slate-500 relative">
+            <button onclick="navTo(0)" id="tab-0" class="flex-1 py-3 text-center border-b-2 border-blue-600 text-blue-600 transition-colors relative">
+                🛒 Cuenta <span id="cart-badge" class="hidden absolute top-1.5 right-4 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full items-center justify-center">0</span>
+            </button>
+            <button onclick="navTo(1)" id="tab-1" class="flex-1 py-3 text-center border-b-2 border-transparent transition-colors">📦 Catálogo</button>
+            <button onclick="navTo(2)" id="tab-2" class="flex-1 py-3 text-center border-b-2 border-transparent transition-colors">⚙️ Gestión</button>
+        </nav>
     </header>
 
-    <main class="max-w-2xl mx-auto p-4 space-y-4">
-        <!-- Carrito -->
-        <section class="bg-white rounded-xl border border-slate-200 overflow-hidden custom-shadow">
-            <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                    <i data-lucide="shopping-cart" class="w-4 h-4"></i> Cuenta Actual
-                </h2>
+    <!-- ÁREA DESLIZABLE -->
+    <main id="swipe-wrap" class="hide-scroll bg-slate-50">
+
+        <!-- PANEL 0: CUENTA / CARRITO -->
+        <section class="swipe-page flex flex-col p-4 relative">
+            <div class="flex justify-between items-center mb-3 flex-shrink-0">
+                <h2 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Despacho Actual</h2>
                 <button onclick="newSale()" class="text-red-500 text-xs font-bold flex items-center gap-1 hover:bg-red-50 px-2 py-1 rounded">
-                    <i data-lucide="trash-2" class="w-3 h-3"></i> LIMPIAR
+                    <i data-lucide="trash-2" class="w-4 h-4"></i> VACIAR
                 </button>
             </div>
-            <div id="cart-list" class="p-4 space-y-3 min-h-[60px]"></div>
-            <div class="bg-blue-600 p-4 text-white">
+            
+            <!-- Lista del Carrito -->
+            <div id="cart-list" class="flex-1 overflow-y-auto space-y-2 pb-24"></div>
+
+            <!-- Total Fijo Abajo (Sticky Bottom) -->
+            <div class="absolute bottom-4 left-4 right-4 bg-blue-600 rounded-xl p-4 text-white custom-shadow border border-blue-500">
                 <div class="flex justify-between items-end">
-                    <span class="text-blue-100 text-sm">Total a cobrar:</span>
+                    <span class="text-blue-100 text-sm font-medium">A cobrar:</span>
                     <div class="text-right">
                         <div class="text-3xl font-bold leading-none">$<span id="t-usd">0.00</span></div>
                         <div class="text-blue-100 font-medium mt-1 uppercase text-xs tracking-widest">
@@ -64,65 +96,111 @@
             </div>
         </section>
 
-        <!-- Buscador -->
-        <section class="space-y-3">
-            <div class="relative">
+        <!-- PANEL 1: CATÁLOGO -->
+        <section class="swipe-page p-4 flex flex-col gap-3">
+            <!-- Buscador -->
+            <div class="relative flex-shrink-0">
                 <i data-lucide="search" class="absolute left-3 top-3 w-5 h-5 text-slate-400"></i>
-                <input type="text" id="busc" oninput="renderCat()" placeholder="Buscar producto o etiqueta..." 
+                <input type="text" id="busc" oninput="renderCat()" placeholder="Buscar producto..." 
                     class="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-blue-500 custom-shadow">
-            </div>
-            <div id="product-list" class="space-y-2 overflow-y-auto pr-1"></div>
-        </section>
-
-        <!-- Formulario -->
-        <section class="bg-white p-4 rounded-xl border border-slate-200 custom-shadow space-y-3">
-            <h3 id="form-title" class="font-bold text-slate-700 flex items-center gap-2 uppercase text-xs tracking-widest">
-                <i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto
-            </h3>
-            <div class="grid grid-cols-2 gap-3">
-                <input type="text" id="p-nom" placeholder="Nombre" class="col-span-2 p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500">
-                <input type="number" id="p-pre" placeholder="Precio $" class="p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500">
-                <input type="text" id="p-tag" placeholder="Tags (comas)" class="p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500">
-            </div>
-            <div class="flex gap-2">
-                <!-- FIX AQUÍ: Se añadió text-white -->
-                <button id="btn-save" onclick="saveProd()" class="flex-1 bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-bold text-sm text-white shadow-lg shadow-blue-200 transition-all">
-                    GUARDAR PRODUCTO
-                </button>
-                <button id="btn-cancel" onclick="clearForm()" class="hidden bg-slate-200 text-slate-600 px-4 rounded-lg font-bold">
+                <button onclick="document.getElementById('busc').value=''; renderCat()" class="absolute right-3 top-3 text-slate-400">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
+
+            <!-- Filtros rápidos (Chips horizontales) -->
+            <div id="quick-filters" class="flex gap-2 overflow-x-auto hide-scroll pb-1 flex-shrink-0"></div>
+            
+            <!-- Lista de Productos -->
+            <div id="product-list" class="flex-1 overflow-y-auto space-y-2 pb-4 hide-scroll"></div>
         </section>
 
-        <!-- Backup -->
-        <section class="flex gap-3">
-            <button onclick="exportDB()" class="flex-1 bg-white border border-slate-200 text-slate-600 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 uppercase tracking-tighter hover:bg-slate-50">
-                <i data-lucide="download" class="w-4 h-4"></i> Exportar JSON
-            </button>
-            <button onclick="document.getElementById('file-input').click()" class="flex-1 bg-white border border-slate-200 text-slate-600 py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 uppercase tracking-tighter hover:bg-slate-50">
-                <i data-lucide="upload" class="w-4 h-4"></i> Importar JSON
-            </button>
-            <input type="file" id="file-input" accept=".json" class="hidden" onchange="importDB(event)">
+        <!-- PANEL 2: GESTIÓN Y BACKUP -->
+        <section class="swipe-page p-4 space-y-4">
+            <!-- Formulario -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 custom-shadow space-y-3">
+                <h3 id="form-title" class="font-bold text-slate-700 flex items-center gap-2 uppercase text-xs tracking-widest">
+                    <i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto
+                </h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <input type="text" id="p-nom" placeholder="Nombre del producto" class="col-span-2 p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500 font-medium">
+                    <input type="number" id="p-pre" inputmode="decimal" placeholder="Precio $" class="p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500 font-bold text-blue-600">
+                    <input type="text" id="p-tag" placeholder="Ej: empanada, bebida" class="p-3 bg-slate-50 border rounded-lg outline-none focus:border-blue-500 text-sm">
+                </div>
+                <div class="flex gap-2">
+                    <button id="btn-save" onclick="saveProd()" class="flex-1 bg-blue-600 active:bg-blue-700 py-3 rounded-lg font-bold text-sm text-white shadow-lg transition-transform active:scale-95">
+                        GUARDAR PRODUCTO
+                    </button>
+                    <button id="btn-cancel" onclick="clearForm()" class="hidden bg-slate-200 text-slate-600 px-4 rounded-lg font-bold">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Backup -->
+            <div class="bg-white p-4 rounded-xl border border-slate-200 custom-shadow">
+                <h3 class="font-bold text-slate-700 uppercase text-xs tracking-widest mb-3 flex items-center gap-2">
+                    <i data-lucide="database" class="w-4 h-4 text-slate-400"></i> Base de Datos
+                </h3>
+                <div class="flex gap-3">
+                    <button onclick="exportDB()" class="flex-1 bg-slate-50 border border-slate-200 text-slate-600 py-3 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
+                        <i data-lucide="download" class="w-5 h-5 text-blue-500"></i> Exportar (.json)
+                    </button>
+                    <button onclick="document.getElementById('file-input').click()" class="flex-1 bg-slate-50 border border-slate-200 text-slate-600 py-3 rounded-lg text-xs font-bold flex flex-col items-center gap-1">
+                        <i data-lucide="upload" class="w-5 h-5 text-emerald-500"></i> Importar (.json)
+                    </button>
+                    <input type="file" id="file-input" accept=".json" class="hidden" onchange="importDB(event)">
+                </div>
+            </div>
         </section>
+
     </main>
 
     <script>
-        // REGISTRO DE SERVICE WORKER PARA PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js');
-        }
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 
         let cat = JSON.parse(localStorage.getItem('catF')) || [];
-        let cart = [];
+        let cart =[];
         let editIdx = -1;
+        const wrap = document.getElementById('swipe-wrap');
+
+        // Función de vibración (Haptic Feedback)
+        function vib() {
+            if (navigator.vibrate) navigator.vibrate(40); // 40ms de vibración suave
+        }
 
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('tasa').value = localStorage.getItem('tasaF') || '';
             lucide.createIcons();
             renderCat();
+            updateFilters();
+            
+            // Iniciar en la pestaña catálogo por defecto
+            setTimeout(() => navTo(1), 100); 
         });
 
+        // Lógica de pestañas deslizables
+        wrap.addEventListener('scroll', () => {
+            const index = Math.round(wrap.scrollLeft / window.innerWidth);
+            [0,1,2].forEach(i => {
+                const tab = document.getElementById(`tab-${i}`);
+                if (i === index) {
+                    tab.classList.add('border-blue-600', 'text-blue-600');
+                    tab.classList.remove('border-transparent', 'text-slate-500');
+                } else {
+                    tab.classList.remove('border-blue-600', 'text-blue-600');
+                    tab.classList.add('border-transparent', 'text-slate-500');
+                }
+            });
+        });
+
+        function navTo(index) {
+            vib();
+            const width = window.innerWidth;
+            wrap.scrollTo({ left: width * index, behavior: 'smooth' });
+        }
+
+        // --- CORE LÓGICA ---
         function getTasa() { 
             try { return new Big(document.getElementById('tasa').value || 0); } 
             catch { return new Big(0); }
@@ -132,6 +210,24 @@
             localStorage.setItem('tasaF', document.getElementById('tasa').value);
             renderCat();
             renderCart();
+        }
+
+        // Filtros rápidos
+        function updateFilters() {
+            const fContainer = document.getElementById('quick-filters');
+            const tags = [...new Set(cat.flatMap(p => p.t || []))];
+            
+            let html = `<button onclick="setFilter('')" class="px-3 py-1 bg-slate-200 text-slate-700 text-xs font-bold rounded-full whitespace-nowrap">Todo</button>`;
+            tags.forEach(tag => {
+                if(tag) html += `<button onclick="setFilter('${tag}')" class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-full whitespace-nowrap uppercase">${tag}</button>`;
+            });
+            fContainer.innerHTML = html;
+        }
+
+        function setFilter(tag) {
+            vib();
+            document.getElementById('busc').value = tag;
+            renderCat();
         }
 
         function renderCat() {
@@ -147,22 +243,20 @@
                     const bsPrice = tasa.gt(0) ? priceBig.times(tasa).toFixed(2) : "0.00";
                     
                     const div = document.createElement('div');
-                    div.className = "bg-white p-4 rounded-xl border border-slate-200 flex items-center justify-between active:scale-[0.98] transition-transform cursor-pointer";
+                    div.className = "bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between active:scale-95 transition-transform cursor-pointer custom-shadow";
                     div.innerHTML = `
                         <div class="flex-1" onclick="addCart(${i})">
                             <div class="font-bold text-slate-800">${p.n}</div>
-                            <div class="flex flex-wrap gap-1 mt-1">
-                                ${p.t ? p.t.map(t => `<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase font-bold">${t}</span>`).join('') : ''}
-                            </div>
+                            <div class="text-xs font-bold text-slate-400 uppercase mt-0.5">${p.t ? p.t.join(' • ') : ''}</div>
                         </div>
-                        <div class="text-right flex items-center gap-4">
+                        <div class="text-right flex items-center gap-3">
                             <div onclick="addCart(${i})">
-                                <div class="text-lg font-bold text-blue-600">$${priceBig.toFixed(2)}</div>
-                                <div class="text-xs font-bold text-emerald-500">${bsPrice} Bs</div>
+                                <div class="text-[17px] font-extrabold text-blue-600 leading-none">$${priceBig.toFixed(2)}</div>
+                                <div class="text-[11px] font-bold text-emerald-500 mt-1">${bsPrice} Bs</div>
                             </div>
-                            <div class="flex flex-col gap-2 pl-4 border-l">
-                                <button onclick="event.stopPropagation(); editProd(${i})" class="p-1 text-slate-400 hover:text-blue-500"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
-                                <button onclick="event.stopPropagation(); delProd(${i})" class="p-1 text-slate-400 hover:text-red-500"><i data-lucide="trash" class="w-4 h-4"></i></button>
+                            <div class="flex flex-col gap-3 pl-3 border-l border-slate-100">
+                                <button onclick="event.stopPropagation(); editProd(${i})" class="text-slate-300 hover:text-orange-500"><i data-lucide="edit-3" class="w-4 h-4"></i></button>
+                                <button onclick="event.stopPropagation(); delProd(${i})" class="text-slate-300 hover:text-red-500"><i data-lucide="trash" class="w-4 h-4"></i></button>
                             </div>
                         </div>
                     `;
@@ -172,48 +266,17 @@
             lucide.createIcons();
         }
 
-        function saveProd() {
-            const n = document.getElementById('p-nom').value.trim();
-            const preVal = document.getElementById('p-pre').value;
-            const t = document.getElementById('p-tag').value.split(',').map(x => x.trim()).filter(x => x);
-            if (!n || !preVal) return alert("Complete nombre y precio");
-            const pre = new Big(preVal).toNumber();
-            if (editIdx > -1) cat[editIdx] = { n, pre, t };
-            else cat.push({ n, pre, t });
-            localStorage.setItem('catF', JSON.stringify(cat));
-            clearForm();
-            renderCat();
-        }
-
-        function editProd(i) {
-            editIdx = i;
-            document.getElementById('p-nom').value = cat[i].n;
-            document.getElementById('p-pre').value = cat[i].pre;
-            document.getElementById('p-tag').value = cat[i].t ? cat[i].t.join(',') : '';
-            document.getElementById('form-title').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-orange-500"></i> Editando Producto`;
-            document.getElementById('btn-save').innerText = "ACTUALIZAR CAMBIOS";
-            document.getElementById('btn-cancel').classList.remove('hidden');
-            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-            lucide.createIcons();
-        }
-
-        function clearForm() {
-            editIdx = -1;
-            document.getElementById('p-nom').value = '';
-            document.getElementById('p-pre').value = '';
-            document.getElementById('p-tag').value = '';
-            document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto`;
-            document.getElementById('btn-save').innerText = "GUARDAR PRODUCTO";
-            document.getElementById('btn-cancel').classList.add('hidden');
-            lucide.createIcons();
-        }
-
         function addCart(i) {
+            vib();
             const p = cat[i];
             const ex = cart.find(x => x.n === p.n);
             if (ex) ex.c = new Big(ex.c).plus(1).toNumber();
             else cart.push({ ...p, c: 1 });
             renderCart();
+            
+            // Animación visual rápida
+            document.body.style.backgroundColor = '#e0f2fe'; // Flash azul claro
+            setTimeout(() => document.body.style.backgroundColor = '', 100);
         }
 
         function renderCart() {
@@ -221,54 +284,108 @@
             const tasa = getTasa();
             l.innerHTML = '';
             let uTotal = new Big(0);
+            let totalItems = 0;
+
             cart.forEach((p, i) => {
+                totalItems += p.c;
                 const subUsd = new Big(p.pre).times(p.c);
                 const subBs = tasa.gt(0) ? subUsd.times(tasa) : new Big(0);
                 uTotal = uTotal.plus(subUsd);
+                
                 const d = document.createElement('div');
-                d.className = "flex items-center justify-between text-sm py-1 border-b border-slate-50 last:border-0";
+                d.className = "bg-white p-3 rounded-xl border border-slate-200 flex items-center justify-between";
                 d.innerHTML = `
-                    <div class="flex-1">
-                        <span class="font-bold text-blue-600 bg-blue-50 px-1.5 rounded mr-2">${p.c}x</span>
-                        <span class="text-slate-700 font-medium">${p.n}</span>
+                    <div class="flex items-center gap-2 flex-1">
+                        <div class="bg-blue-100 text-blue-700 font-black px-2 py-1 rounded text-sm">${p.c}x</div>
+                        <div class="font-bold text-slate-700 leading-tight">${p.n}</div>
                     </div>
-                    <div class="text-right mr-4">
+                    <div class="text-right mx-3">
                         <div class="font-bold text-slate-800">$${subUsd.toFixed(2)}</div>
                         <div class="text-[10px] font-bold text-slate-400">${subBs.toFixed(2)} Bs</div>
                     </div>
-                    <button onclick="rem(${i})" class="text-slate-300 hover:text-red-500"><i data-lucide="x-circle" class="w-5 h-5"></i></button>
+                    <button onclick="rem(${i})" class="text-red-400 bg-red-50 p-2 rounded-lg active:scale-90 transition-transform"><i data-lucide="minus" class="w-4 h-4"></i></button>
                 `;
                 l.appendChild(d);
             });
+
+            // Actualizar Totales
             document.getElementById('t-usd').innerText = uTotal.toFixed(2);
-            document.getElementById('t-bs').innerText = tasa.gt(0) 
-                ? uTotal.times(tasa).toNumber().toLocaleString('es-VE', {minimumFractionDigits: 2, maximumFractionDigits: 2})
-                : "0,00";
+            document.getElementById('t-bs').innerText = tasa.gt(0) ? uTotal.times(tasa).toNumber().toLocaleString('es-VE', {minimumFractionDigits: 2}) : "0,00";
+            
+            // Actualizar Badge (Puntito rojo)
+            const badge = document.getElementById('cart-badge');
+            if(totalItems > 0) {
+                badge.innerText = totalItems;
+                badge.style.display = 'flex';
+            } else {
+                badge.style.display = 'none';
+            }
+            
             lucide.createIcons();
         }
 
         function rem(i) {
+            vib();
             if (cart[i].c > 1) cart[i].c = new Big(cart[i].c).minus(1).toNumber();
             else cart.splice(i, 1);
             renderCart();
         }
 
-        function delProd(i) {
-            if (confirm("¿Eliminar definitivamente?")) {
-                cat.splice(i, 1);
-                localStorage.setItem('catF', JSON.stringify(cat));
-                renderCat();
-            }
+        function newSale() { vib(); cart =[]; renderCart(); navTo(1); }
+
+        // --- CRUD PRODUCTOS ---
+        function saveProd() {
+            vib();
+            const n = document.getElementById('p-nom').value.trim();
+            const preVal = document.getElementById('p-pre').value;
+            const t = document.getElementById('p-tag').value.split(',').map(x => x.trim()).filter(x => x);
+            
+            if (!n || !preVal) return alert("Falta nombre o precio");
+            const pre = new Big(preVal).toNumber();
+
+            if (editIdx > -1) cat[editIdx] = { n, pre, t };
+            else cat.push({ n, pre, t });
+
+            localStorage.setItem('catF', JSON.stringify(cat));
+            clearForm();
+            updateFilters();
+            renderCat();
+            navTo(1); // Volver al catálogo al guardar
         }
 
-        function newSale() { cart = []; renderCart(); }
+        function editProd(i) {
+            vib();
+            editIdx = i;
+            document.getElementById('p-nom').value = cat[i].n;
+            document.getElementById('p-pre').value = cat[i].pre;
+            document.getElementById('p-tag').value = cat[i].t ? cat[i].t.join(',') : '';
+            document.getElementById('form-title').innerHTML = `<i data-lucide="edit-3" class="w-4 h-4 text-orange-500"></i> Editar Producto`;
+            document.getElementById('btn-save').innerText = "ACTUALIZAR PRODUCTO";
+            document.getElementById('btn-cancel').classList.remove('hidden');
+            navTo(2); // Ir a la pestaña de gestión
+            lucide.createIcons();
+        }
 
+        function clearForm() {
+            editIdx = -1;
+            document.getElementById('p-nom').value = ''; document.getElementById('p-pre').value = ''; document.getElementById('p-tag').value = '';
+            document.getElementById('form-title').innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4 text-blue-500"></i> Nuevo Producto`;
+            document.getElementById('btn-save').innerText = "GUARDAR PRODUCTO";
+            document.getElementById('btn-cancel').classList.add('hidden');
+            lucide.createIcons();
+        }
+
+        function delProd(i) {
+            vib();
+            if (confirm("¿Borrar del catálogo?")) { cat.splice(i, 1); localStorage.setItem('catF', JSON.stringify(cat)); updateFilters(); renderCat(); }
+        }
+
+        // --- BACKUP ---
         function exportDB() {
             const dataStr = JSON.stringify(cat, null, 2);
-            const blob = new Blob([dataStr], { type: "application/json" });
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = `inventario_flecha_${new Date().toISOString().slice(0,10)}.json`;
+            a.href = URL.createObjectURL(new Blob([dataStr], { type: "application/json" }));
+            a.download = `flecha_backup_${new Date().toISOString().slice(0,10)}.json`;
             a.click();
         }
 
@@ -279,10 +396,9 @@
             reader.onload = (ev) => {
                 try {
                     const imported = JSON.parse(ev.target.result);
-                    if (Array.isArray(imported) && confirm("¿Reemplazar inventario?")) {
-                        cat = imported;
-                        localStorage.setItem('catF', JSON.stringify(cat));
-                        renderCat();
+                    if (Array.isArray(imported) && confirm("¿Sobrescribir todo el inventario?")) {
+                        cat = imported; localStorage.setItem('catF', JSON.stringify(cat));
+                        updateFilters(); renderCat(); navTo(1);
                     }
                 } catch { alert("Archivo inválido"); }
             };
